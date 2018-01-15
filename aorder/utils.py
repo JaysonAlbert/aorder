@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import pyqtgraph as pg
+from pyqtgraph.Qt import QtCore, QtGui
 
 
 def plot_candles(pricing, title=None, volume_bars=False, color_function=None, technicals=None):
@@ -69,31 +71,127 @@ def plot_candles(pricing, title=None, volume_bars=False, color_function=None, te
     plt.show()
 
 
+class BarGraph(pg.BarGraphItem):
+    def __init__(self, **opts):
+        super(BarGraph, self).__init__()
+
+        self.df = opts.pop('df', None)
+
+    def mouseClickEvent(self, event):
+        print(event)
+
+
+class CustomPlotItem(pg.PlotItem):
+
+    def __init__(self, *args, **kwargs):
+        self.orders = kwargs.pop('orders', None)
+        self.df = kwargs.pop('df', None)
+
+        super(CustomPlotItem, self).__init__(*args, **kwargs)
+        self._region = None
+        self._step = None
+        self.slider = None
+        self.order_plots = []
+        self.sorted_pnl = self.orders.pnl.sort_values().values
+
+    def keyPressEvent(self, event, *args, **kwargs):
+        super(CustomPlotItem, self).keyPressEvent(event, *args, **kwargs)
+
+        if event.key() == QtCore.Qt.Key_Left:
+            left, right = self._region.getRegion()
+            self._region.setRegion([left - self._step, right - self._step])
+        elif event.key() == QtCore.Qt.Key_Right:
+            left, right = self._region.getRegion()
+            self._region.setRegion([left + self._step, right + self._step])
+
+    def set_region(self, region, step):
+        self._region = region
+        self._step = step
+
+    def update_orders(self, percent=100):
+        ind = int(percent / 100.0 * self.orders.shape[0])
+        if ind == self.orders.shape[0]:
+            ind = ind - 1
+        pnl = self.sorted_pnl[ind]
+        if self.slider:
+            self.slider.label.setText("{}%,{}".format(percent, int(pnl)))
+            if self.slider.check_box.checkState() == QtCore.Qt.Checked:
+                orders = self.orders[self.orders.pnl > pnl]
+            else:
+                orders = self.orders[self.orders.pnl < pnl]
+        else:
+            orders = self.orders[self.orders.pnl < pnl]
+        self.plot_orders(orders)
+
+    def plot_orders(self, orders):
+        if len(self.order_plots) != 0:
+            for pt in self.order_plots:
+                self.removeItem(pt)
+        if orders is not None and not orders.empty:
+            entryXs = self.df.datetime.searchsorted(orders.entryDt)
+            entryYs = orders.entryPrice
+            exitXs = self.df.datetime.searchsorted(orders.exitDt)
+            exitYs = orders.exitPrice
+            pt = self.plot(entryXs[orders.volume == 1],
+                           entryYs[orders.volume == 1].values,
+                           pen=None,
+                           symbolBrush=(255, 0, 0),
+                           symbol='t1')
+            self.order_plots.append(pt)
+            pt = self.plot(entryXs[orders.volume == -1],
+                           entryYs[orders.volume == -1].values,
+                           pen=None,
+                           symbolBrush=(0, 255, 0),
+                           symbol='t')
+            self.order_plots.append(pt)
+            pt = self.plot(exitXs,
+                           exitYs.values,
+                           pen=None,
+                           symbolBrush=(0, 0, 255),
+                           )
+            self.order_plots.append(pt)
+
+
+class Slider(QtGui.QWidget):
+    def __init__(self, parent=None):
+        super(Slider, self).__init__(parent=parent)
+
+        self.verticalLayout = QtGui.QVBoxLayout(self)
+        self.label = QtGui.QLabel(self)
+        self.verticalLayout.addWidget(self.label)
+        self.slider = QtGui.QSlider(self)
+        self.slider.setValue(0)
+        self.verticalLayout.addWidget(self.slider)
+        self.check_box = QtGui.QCheckBox('large than', self)
+        self.verticalLayout.addWidget(self.check_box)
+
+
+class Widget(QtGui.QWidget):
+    def __init__(self, parent=None):
+        super(Widget, self).__init__(parent=parent)
+
+        self.horizontalLayout = QtGui.QHBoxLayout(self)
+        self.slider = Slider(self)
+
+        self.horizontalLayout.addWidget(self.slider)
+
+    def addWidget(self, widget):
+        self.horizontalLayout.addWidget(widget)
+
+
 def plot_candles1(df, *args, **kwargs):
-    import pandas as pd
-    import pyqtgraph as pg
-    from pyqtgraph.Qt import QtCore, QtGui
-    import numpy as np
-
-    class BarGraph(pg.BarGraphItem):
-        def __init__(self, **opts):
-            super(BarGraph, self).__init__()
-
-            self.df = opts.pop('df', None)
-
-        def mouseClickEvent(self, event):
-            print(event)
-
     orders = kwargs.pop('orders', None)
     technicals = kwargs.pop('technicals', {})
 
     app = QtGui.QApplication([])
+
     win = pg.GraphicsWindow()
+
     label = pg.LabelItem(justify='right')
     win.addItem(label)
 
-
-    p1 = win.addPlot(row=1, col=0)
+    p1 = CustomPlotItem(orders=orders, df=df)
+    win.ci.addItem(p1, row=1, col=0)
     p3 = win.addPlot(row=2, col=0)
     p2 = win.addPlot(row=3, col=0)
     row_count = 4
@@ -122,39 +220,26 @@ def plot_candles1(df, *args, **kwargs):
     p1.addItem(bg)
     p1.addItem(bg1)
 
-    if orders is not None and not orders.empty:
-        entryXs = df.datetime.searchsorted(orders.entryDt)
-        entryYs = orders.entryPrice
-        exitXs = df.datetime.searchsorted(orders.exitDt)
-        exitYs = orders.exitPrice
-        p1.plot(entryXs[orders.volume == 1],
-                entryYs[orders.volume == 1].values,
-                pen=None,
-                symbolBrush=(255, 0, 0),
-                symbol='t')
-        p1.plot(entryXs[orders.volume == -1],
-                entryYs[orders.volume == -1].values,
-                pen=None,
-                symbolBrush=(0, 255, 0),
-                symbol='t')
-        p1.plot(exitXs,
-                exitYs.values,
-                pen=None,
-                symbolBrush=(0, 0, 255),
-                )
+    main_window = Widget()
+    main_window.addWidget(win)
+    main_window.slider.slider.valueChanged.connect(p1.update_orders)
+    main_window.slider.check_box.stateChanged.connect(p1.update_orders)
+    p1.slider = main_window.slider
+
+    p1.update_orders()
 
     main_low = df.low.min()
     if len(technicals) != 0:
-        for key,tech in technicals.iteritems():
+        for key, tech in technicals.iteritems():
             tech = np.nan_to_num(tech)
             if main_low > tech.max():
-                tmp = win.addPlot(title=key,row=row_count,col=0)
+                tmp = win.addPlot(title=key, row=row_count, col=0)
                 row_count = row_count + 1
                 tmp.setXLink(p1)
-                tmp.setAutoVisible(y=True)
-                tmp.plot(x1,tech,)
+                tmp.enableAutoRange(y=True)
+                tmp.plot(x1, tech, )
             else:
-                p1.plot(x1,tech)
+                p1.plot(x1, tech)
 
     vol = pg.BarGraphItem(x=x1, width=width1, height=df.volume, brushes=brushes)
     p3.addItem(vol)
@@ -193,6 +278,7 @@ def plot_candles1(df, *args, **kwargs):
     p1.sigRangeChanged.connect(updateRegion)
 
     region.setRegion([0.1 * length, 0.2 * length])
+    p1.set_region(region, 10)
 
     # cross hair
     vLine = pg.InfiniteLine(angle=90, movable=False)
@@ -216,6 +302,7 @@ def plot_candles1(df, *args, **kwargs):
             hLine.setPos(mousePoint.y())
 
     proxy = pg.SignalProxy(p1.scene().sigMouseMoved, rateLimit=60, slot=mouseMoved)
+    main_window.show()
 
     import sys
     if (sys.flags.interactive != 1) or not hasattr(QtCore, 'PYQT_VERSION'):
