@@ -53,7 +53,7 @@ if __name__ == '__main__':
 
     orders = pd.DataFrame([i.__dict__ for i in engine.calculateBacktestingResult()['resultList']])
 
-    pricing = pd.DataFrame(list(engine.dbCursor))[:1000]
+    pricing = pd.DataFrame(list(engine.dbCursor))
 
     atr = talib.ATR(pricing.high.values, pricing.low.values, pricing.close.values, 25)
 
@@ -65,4 +65,4 @@ if __name__ == '__main__':
         'atr-ma': atr_ma
     }
 
-    plot_candles1(pricing, volume_bars=True, orders=None, technicals=technicals)
+    plot_candles1(pricing, volume_bars=True, orders=orders, technicals=technicals)

@@ -92,13 +92,14 @@ def plot_candles1(df, *args, **kwargs):
     label = pg.LabelItem(justify='right')
     win.addItem(label)
 
+
     p1 = win.addPlot(row=1, col=0)
     p3 = win.addPlot(row=2, col=0)
-    p2 = win.addPlot(row=4, col=0)
+    p2 = win.addPlot(row=3, col=0)
+    row_count = 4
     p3.setXLink(p1)
 
     win.ci.layout.setRowStretchFactor(1, 10)
-    win.ci.layout.setRowStretchFactor(2, 0.1)
 
     region = pg.LinearRegionItem()
     region.setZValue(10)
@@ -147,9 +148,10 @@ def plot_candles1(df, *args, **kwargs):
         for key,tech in technicals.iteritems():
             tech = np.nan_to_num(tech)
             if main_low > tech.max():
-                win.nextRow()
-                tmp = win.addPlot(title=key)
+                tmp = win.addPlot(title=key,row=row_count,col=0)
+                row_count = row_count + 1
                 tmp.setXLink(p1)
+                tmp.setAutoVisible(y=True)
                 tmp.plot(x1,tech,)
             else:
                 p1.plot(x1,tech)
