@@ -230,16 +230,17 @@ def plot_candles1(df, *args, **kwargs):
 
     main_low = df.low.min()
     if len(technicals) != 0:
-        for key, tech in technicals.iteritems():
-            tech = np.nan_to_num(tech)
-            if main_low > tech.max():
-                tmp = win.addPlot(title=key, row=row_count, col=0)
+        for name, type, tech in technicals:
+            if type == 1:
+                tmp = win.addPlot(title=name, row=row_count, col=0)
                 row_count = row_count + 1
                 tmp.setXLink(p1)
                 tmp.enableAutoRange(y=True)
-                tmp.plot(x1, tech, )
+                for t in tech:
+                    tmp.plot(x1, t, )
             else:
-                p1.plot(x1, tech)
+                for t in tech:
+                    p1.plot(x1, t)
 
     vol = pg.BarGraphItem(x=x1, width=width1, height=df.volume, brushes=brushes)
     p3.addItem(vol)

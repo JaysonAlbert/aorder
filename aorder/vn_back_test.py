@@ -55,14 +55,15 @@ if __name__ == '__main__':
 
     pricing = pd.DataFrame(list(engine.dbCursor))
 
-    atr = talib.ATR(pricing.high.values, pricing.low.values, pricing.close.values, 25)
+    atr = np.nan_to_num(talib.ATR(pricing.high.values, pricing.low.values, pricing.close.values, 25))
 
-    atr_ma = pd.DataFrame(atr).rolling(25).mean()[0].values
+    atr_ma = np.nan_to_num(pd.DataFrame(atr).rolling(25).mean()[0].values)
 
-    technicals = {
-        'rsi': talib.RSI(pricing.close.values, 4),
-        'atr': atr,
-        'atr-ma': atr_ma
-    }
+    # 每个子图一个tuple: (name, type, [list of tech]), type为0则画在主图（k线图）上，1，则画在子图上。
+    # [list of tech]，每个元素长度要和k线相同
+
+    length = pricing.shape[0]
+    technicals = [('rsi', 1, [talib.RSI(pricing.close.values, 4), np.full(length,50-16), np.full(length,50+16)]),
+                  ('atr', 1,[np.greater(atr, atr_ma).astype(int)])]
 
     plot_candles1(pricing, volume_bars=True, orders=orders, technicals=technicals)
