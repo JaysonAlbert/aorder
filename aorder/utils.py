@@ -1,15 +1,13 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 
 
 def plot_candles(pricing, title=None, volume_bars=False, color_function=None, technicals=None):
     """ Plots a candlestick chart using quantopian pricing data.
-
     Author: Daniel Treiman
-
     Args:
       pricing: A pandas dataframe with columns ['open_price', 'close_price', 'high', 'low', 'volume']
       title: An optional title for the chart
@@ -128,29 +126,41 @@ class CustomPlotItem(pg.PlotItem):
             for pt in self.order_plots:
                 self.removeItem(pt)
         if orders is not None and not orders.empty:
-            entryXs = self.df.datetime.searchsorted(orders.entryDt)
-            entryYs = orders.entryPrice
+            buy_orders = orders[orders.volume==1]
+            sell_orders = orders[orders.volume==-1]
+            buy_orderXs = self.df.datetime.searchsorted(buy_orders.entryDt)
+            sell_orderXs = self.df.datetime.searchsorted(sell_orders.entryDt)
+            buy_orderYs = buy_orders.entryPrice
+            sell_orderYs = sell_orders.entryPrice
             exitXs = self.df.datetime.searchsorted(orders.exitDt)
             exitYs = orders.exitPrice
-            pt = self.plot(entryXs[orders.volume == 1],
-                           entryYs[orders.volume == 1].values,
-                           pen=None,
-                           symbolBrush=(255, 0, 0),
-                           symbol='t1')
-            self.order_plots.append(pt)
-            pt = self.plot(entryXs[orders.volume == -1],
-                           entryYs[orders.volume == -1].values,
-                           pen=None,
-                           symbolBrush=(0, 255, 0),
-                           symbol='t')
-            self.order_plots.append(pt)
-            pt = self.plot(exitXs,
-                           exitYs.values,
-                           pen=None,
-                           symbolBrush=(0, 0, 255),
-                           )
-            self.order_plots.append(pt)
-
+            try:
+                pt = self.plot(buy_orderXs,
+                        buy_orderYs.values,
+                        pen=None,
+                        symbolBrush=(255, 0, 0),
+                        symbol='t1')
+                self.order_plots.append(pt)
+            except:
+                pass
+            try:
+                pt = self.plot(sell_orderXs,
+                        sell_orderYs.values,
+                        pen=None,
+                        symbolBrush=(0, 255, 0),
+                        symbol='t')
+                self.order_plots.append(pt)
+            except:
+                pass
+            try:
+                pt = self.plot(exitXs,
+                        exitYs.values,
+                        pen=None,
+                        symbolBrush=(0, 0, 255),
+                        )
+                self.order_plots.append(pt)
+            except:
+                pass
 
 class Slider(QtGui.QWidget):
     def __init__(self, parent=None):
@@ -179,11 +189,9 @@ class Widget(QtGui.QWidget):
         self.horizontalLayout.addWidget(widget)
 
 
-def plot_candles1(df, *args, **kwargs):
+def plot_trade(df, *args, **kwargs):
     orders = kwargs.pop('orders', None)
     technicals = kwargs.pop('technicals', {})
-
-    app = QtGui.QApplication([])
 
     win = pg.GraphicsWindow()
 
