@@ -4,7 +4,7 @@ from __future__ import division
 
 from vnpy.trader.app.ctaStrategy.ctaBacktesting import BacktestingEngine, MINUTE_DB_NAME
 import pandas as pd
-from utils import plot_candles1
+from utils import plot_trade
 
 file_name = 'bu_zf.csv'
 
@@ -29,4 +29,4 @@ engine.loadHistoryData()
 
 pricing = pd.DataFrame(list(engine.dbCursor))
 
-plot_candles1(pricing, volume_bars=True, orders=orders)
+plot_trade(pricing, volume_bars=True, orders=orders)

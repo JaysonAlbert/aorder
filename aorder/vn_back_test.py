@@ -8,7 +8,7 @@ from __future__ import division
 
 from vnpy.trader.app.ctaStrategy.ctaBacktesting import BacktestingEngine, MINUTE_DB_NAME
 import pandas as pd
-from utils import plot_candles, plot_candles1
+from utils import plot_candles, plot_trade
 import talib
 import numpy as np
 
@@ -22,7 +22,7 @@ if __name__ == '__main__':
     engine.setBacktestingMode(engine.BAR_MODE)
 
     # 设置回测用的数据起始日期
-    engine.setStartDate('20170601')
+    engine.setStartDate('20160601')
 
     # 设置产品相关参数
     engine.setSlippage(0.2)  # 股指1跳
@@ -34,7 +34,8 @@ if __name__ == '__main__':
     engine.setDatabase(MINUTE_DB_NAME, 'rb0000')
 
     # 在引擎中创建策略对象
-    d = {'rsiLength': 4, 'atrLength': 25}
+    # d = {'rsiLength': 10, 'atrLength': 10, 'rsiEntry':27}
+    d = {'rsiLength': 10, 'atrLength': 10, 'rsiEntry':27}
     engine.initStrategy(AtrRsiStrategy, d)
 
     engine.loadHistoryData()
@@ -46,7 +47,7 @@ if __name__ == '__main__':
     engine.runBacktesting()
 
     # 显示回测结果
-    engine.showBacktestingResult()
+    engine.showBacktestingResult(d)
 
     # analysis
     engine.loadHistoryData()
@@ -66,4 +67,4 @@ if __name__ == '__main__':
     technicals = [('rsi', 1, [talib.RSI(pricing.close.values, 4), np.full(length,50-16), np.full(length,50+16)]),
                   ('atr', 1,[np.greater(atr, atr_ma).astype(int)])]
 
-    plot_candles1(pricing, volume_bars=True, orders=orders, technicals=technicals)
+    plot_trade(pricing, volume_bars=True, orders=orders, technicals=technicals)

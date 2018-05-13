@@ -12,7 +12,7 @@ import dash_html_components as html
 
 from vnpy.trader.app.ctaStrategy.ctaBacktesting import BacktestingEngine, MINUTE_DB_NAME
 import pandas as pd
-from utils import plot_candles, plot_candles1
+from utils import plot_candles, plot_trade
 import talib
 import numpy as np
 
